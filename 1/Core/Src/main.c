@@ -17,9 +17,12 @@
   ******************************************************************************
   */
 /* USER CODE END Header */
-
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "adc.h"
+#include "dma.h"
+#include "tim.h"
+#include "gpio.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -54,7 +57,20 @@ void SystemClock_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+uint16_t adcBuffer[256];
+uint16_t dmaBuffer[16];
 
+
+__weak void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
+{
+	static uint8_t index = 0;
+	adcBuffer[index++] = HAL_ADC_GetValue(&hadc1);
+}
+
+void oversampled(DMA_HandlaTypeDef *_hdma)
+{
+
+}
 /* USER CODE END 0 */
 
 /**
@@ -84,7 +100,15 @@ int main(void)
   /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
+  MX_GPIO_Init();
+  MX_ADC1_Init();
+  MX_DMA_Init();
+  MX_TIM3_Init();
   /* USER CODE BEGIN 2 */
+  HAL_ADC_Start_IT(&hadc1);
+  HAL_TIM_Base_Start(&htim3);
+  HAL_DMA_RegisterCallback(&hdma_adc1, HAL_DMA_XFER_CPLT_CB_ID, oversampled);
+  DAL_ADC_Start_DMA(&hadc1, (uint32_t*)dmaBuffer, sizeof(dmaBuffer)/sizeof(dmaBuffer[0]));
 
   /* USER CODE END 2 */
 
@@ -112,7 +136,8 @@ void SystemClock_Config(void)
   */
   __HAL_RCC_PWR_CLK_ENABLE();
   __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE1);
-  /** Initializes the CPU, AHB and APB busses clocks
+  /** Initializes the RCC Oscillators according to the specified parameters
+  * in the RCC_OscInitTypeDef structure.
   */
   RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
   RCC_OscInitStruct.HSIState = RCC_HSI_ON;
@@ -127,7 +152,7 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
-  /** Initializes the CPU, AHB and APB busses clocks
+  /** Initializes the CPU, AHB and APB buses clocks
   */
   RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
                               |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
